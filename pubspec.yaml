@@ -1,0 +1,39 @@
+name: corrige_ai
+description: "Plataforma de correção inteligente de avaliações para professores e escolas."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.10 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Gerenciamento de Estado (Organização da memória do app)
+  flutter_riverpod: ^2.5.1
+
+  # Utilitários de Comparação e Identificadores Únicos
+  equatable: ^2.0.5
+  uuid: ^4.4.0
+  intl: ^0.19.0
+
+  # Gerador de PDF, Impressão e QR Code
+  pdf: ^3.10.8
+  printing: ^5.13.1
+  qr_flutter: ^4.1.0
+
+  # Câmera e Scanner de QR Code
+  camera: ^0.11.0+1
+  google_mlkit_barcode_scanning: ^0.12.0
+
+  # Comunicação Web / API Gemini 1.5 Flash
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
