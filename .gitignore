@@ -46,3 +46,10 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Ambiente e Segredos
+.env
+.env.*
+
+# Logs de IA
+codebundle.md

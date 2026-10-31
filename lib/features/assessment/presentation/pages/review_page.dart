@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart'; // IMPORT ADICIONADO
 import '../../domain/models/correction_result_model.dart';
 import '../../domain/models/assessment_model.dart';
 
@@ -24,11 +25,11 @@ class _ReviewPageState extends State<ReviewPage> {
   // Função da Régua Proporcional Dinâmica
   List<double> _calculateQuartiles(double maxValue) {
     return [
-      0.0,             // Adicionado: Permite zerar a questão
-      maxValue * 0.25, // 25%
-      maxValue * 0.50, // 50%
-      maxValue * 0.75, // 75%
-      maxValue * 1.00, // 100%
+      0.0,
+      maxValue * 0.25,
+      maxValue * 0.50,
+      maxValue * 0.75,
+      maxValue * 1.00,
     ];
   }
 
@@ -59,6 +60,16 @@ class _ReviewPageState extends State<ReviewPage> {
     _result.transcription = _transcriptionController.text;
     _result.feedback = _feedbackController.text;
 
+    // SALVANDO NO HIVE (Persistência E2E)
+    final box = Hive.box('corrections');
+    box.add({
+      'timestamp': DateTime.now().toIso8601String(),
+      'question': widget.question.statement ?? 'Sem enunciado',
+      'totalScore': _result.totalScore,
+      'maxScore': widget.question.maxScore,
+      'resultJson': _result.toJson(),
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Correção aprovada e salva com sucesso!'),
@@ -66,7 +77,6 @@ class _ReviewPageState extends State<ReviewPage> {
       ),
     );
 
-    // Retorna para a tela anterior confirmando o salvamento
     Navigator.pop(context, _result);
   }
 
@@ -174,37 +184,40 @@ class _ReviewPageState extends State<ReviewPage> {
                       ),
                       const SizedBox(height: 8),
                       Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    const Text('Pontuação (Régua Proporcional):', style: TextStyle(fontWeight: FontWeight.bold)),
-    const SizedBox(height: 8),
-    Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: _calculateQuartiles(eval.maxScore).map((scoreOption) {
-        final isSelected = (eval.assignedScore - scoreOption).abs() < 0.001;
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Pontuação (Régua Proporcional):',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: _calculateQuartiles(eval.maxScore).map((scoreOption) {
+                              final isSelected =
+                                  (eval.assignedScore - scoreOption).abs() < 0.001;
 
-        return ChoiceChip(
-          label: Text(scoreOption.toStringAsFixed(2)),
-          selected: isSelected,
-          selectedColor: Colors.blue.shade200,
-          backgroundColor: Colors.grey.shade100,
-          onSelected: (bool selected) {
-            if (selected) {
-              _updateScore(eval, scoreOption);
-            }
-          },
-        );
-      }).toList(),
-    ),
-    const SizedBox(height: 8),
-    Center(
-      child: Text(
-        'Selecionado: ${eval.assignedScore.toStringAsFixed(2)} / ${eval.maxScore} pts',
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
-      ),
-    ),
-  ],
-),
+                              return ChoiceChip(
+                                label: Text(scoreOption.toStringAsFixed(2)),
+                                selected: isSelected,
+                                selectedColor: Colors.blue.shade200,
+                                backgroundColor: Colors.grey.shade100,
+                                onSelected: (bool selected) {
+                                  if (selected) {
+                                    _updateScore(eval, scoreOption);
+                                  }
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 8),
+                          Center(
+                            child: Text(
+                              'Selecionado: ${eval.assignedScore.toStringAsFixed(2)} / ${eval.maxScore} pts',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

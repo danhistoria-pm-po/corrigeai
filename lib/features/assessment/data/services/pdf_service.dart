@@ -25,7 +25,7 @@ class PdfService {
                   children: [
                     pw.Text(
                       'CorrigeAI - Folha de Resposta',
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 18,
                         fontWeight: pw.FontWeight.bold,
                       ),

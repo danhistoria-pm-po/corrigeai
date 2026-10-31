@@ -1,14 +1,18 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../domain/models/assessment_model.dart';
-import '../../data/services/gemini_service.dart';
-import '../../domain/models/correction_result_model.dart';
+import '../../domain/repositories/correction_repository.dart';
 import 'review_page.dart';
 
 class CameraPage extends StatefulWidget {
   final QuestionModel question;
+  final CorrectionRepository repository;
 
-  const CameraPage({super.key, required this.question});
+  const CameraPage({
+    super.key,
+    required this.question,
+    required this.repository,
+  });
 
   @override
   State<CameraPage> createState() => _CameraPageState();
@@ -16,50 +20,36 @@ class CameraPage extends StatefulWidget {
 
 class _CameraPageState extends State<CameraPage> {
   bool _isAnalyzing = false;
+  final _picker = ImagePicker();
 
-  // Simula a captura de imagem para ambiente Web/Desktop/Emulador com um JPEG válido estruturalmente
-  Future<void> _captureAndAnalyze() async {
+  Future<void> _captureAndAnalyze(ImageSource source) async {
+      final XFile? photo = await _picker.pickImage(
+      source: source,
+      maxWidth: 800, // Reduzido de 1600 para 800
+      imageQuality: 60, // Reduzido de 85 para 60
+    );
+
+    if (photo == null) return;
+
+    final bytes = await photo.readAsBytes();
     setState(() => _isAnalyzing = true);
 
     try {
-      // Bytes reais de um JPEG mínimo válido para evitar erro de decodificação na API
-      final dummyBytes = Uint8List.fromList([
-        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
-        0x01, 0x01, 0x00, 0x48, 0x00, 0x48, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43,
-        0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08, 0x07, 0x07, 0x07, 0x09,
-        0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B, 0x0C, 0x19, 0x12,
-        0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20,
-        0x24, 0x2E, 0x27, 0x20, 0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29,
-        0x2C, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D, 0x38, 0x32,
-        0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x0A,
-        0x00, 0x0A, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00, 0x1F, 0x00, 0x00,
-        0x01, 0x05, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-        0x09, 0x0A, 0x0B, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F,
-        0x00, 0x37, 0x01, 0x3F, 0xFF, 0xD9
-      ]);
-
-      const apiKey = 'Chave';
-      final geminiService = GeminiService(apiKey: apiKey);
-
-      final result = await geminiService.evaluateAnswer(
-        imageBytes: dummyBytes,
+      final result = await widget.repository.evaluateAnswer(
+        imageBytes: bytes,
+        mimeType: photo.mimeType ?? 'image/jpeg',
         question: widget.question,
       );
 
       if (mounted) {
         setState(() => _isAnalyzing = false);
         
-        // Converte o JSON do Gemini no nosso modelo de resultado
-        final correctionResult = CorrectionResultModel.fromJson(result);
-        
-        // Navega para a tela de revisão
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ReviewPage(
               question: widget.question,
-              correctionResult: correctionResult,
+              correctionResult: result,
             ),
           ),
         );
@@ -69,8 +59,13 @@ class _CameraPageState extends State<CameraPage> {
         setState(() => _isAnalyzing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro na análise: ${e.toString()}'),
+            content: Text(
+              e.toString().contains('503') || e.toString().contains('429')
+                  ? 'O serviço de IA está sobrecarregado. Tentamos algumas vezes, mas continua instável. Tente novamente em instantes.'
+                  : 'Erro na análise: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
           ),
         );
       }
@@ -81,7 +76,7 @@ class _CameraPageState extends State<CameraPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Capturar Prova - Gemini 1.5 Flash'),
+        title: const Text('Capturar Prova - IA'),
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
       ),
@@ -141,14 +136,23 @@ class _CameraPageState extends State<CameraPage> {
                     ),
                   ),
                   const Spacer(),
+                  OutlinedButton.icon(
+                    onPressed: () => _captureAndAnalyze(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('Escolher da Galeria / Arquivo'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   ElevatedButton.icon(
-                    onPressed: _captureAndAnalyze,
+                    onPressed: () => _captureAndAnalyze(ImageSource.camera),
                     icon: const Icon(Icons.camera),
-                    label: const Text('Capturar e Avaliar com IA'),
+                    label: const Text('Tirar Foto (Câmera)'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ],

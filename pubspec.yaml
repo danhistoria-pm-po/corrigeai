@@ -1,5 +1,5 @@
 name: corrige_ai
-description: "Plataforma de correção inteligente de avaliações para professores e escolas."
+description: "Plataforma de correção automática de provas discursivas usando IA."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -27,8 +27,17 @@ dependencies:
   camera: ^0.11.0+1
   google_mlkit_barcode_scanning: ^0.12.0
 
-  # Comunicação Web / API Gemini 1.5 Flash
+  # Comunicação Web / API Gemini 2.5 Flash
   http: ^1.2.0
+
+  # Gestão Segura de Variáveis de Ambiente (.env)
+  flutter_dotenv: ^5.2.1
+
+  # Seleção de Imagens da Câmera e Galeria
+  image_picker: ^1.1.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
@@ -37,3 +46,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
+  # Declaração obrigatória para o pacote flutter_dotenv conseguir ler o ficheiro
+  assets:
+    - .env
